@@ -13,12 +13,50 @@ import (
 
 const (
 	initialInputs = 2
-	maxInputs     = 8
+	maxInputs     = 6
 	minInputs     = 1
+)
+
+var (
+	cursorLineStyle = lipgloss.NewStyle().
+			Background(lipgloss.Color("57")).
+			Foreground(lipgloss.Color("230"))
+
+	placeholderStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("238"))
+
+	focusedPlaceholderStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("99"))
 )
 
 type keymap = struct {
 	next, prev, add, remove, quit key.Binding
+}
+
+func newTextarea() textarea.Model {
+	t := textarea.New()
+	t.SetHeight(20)
+	t.Prompt = ""
+	t.Placeholder = "Type something"
+	t.ShowLineNumbers = true
+	t.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("212"))
+	t.CursorLineStyle = lipgloss.NewStyle().
+		Background(lipgloss.Color("177")).
+		Foreground(lipgloss.Color("160"))
+	blurTextarea(&t)
+	return t
+}
+
+func focusTextarea(m *textarea.Model) {
+	m.CursorLineStyle = cursorLineStyle
+	m.PlaceholderStyle = focusedPlaceholderStyle
+	m.Focus()
+}
+
+func blurTextarea(m *textarea.Model) {
+	m.CursorLineStyle = lipgloss.NewStyle()
+	m.PlaceholderStyle = placeholderStyle
+	m.Blur()
 }
 
 type model struct {
@@ -35,20 +73,20 @@ func newModel() model {
 		help:   help.New(),
 		keymap: keymap{
 			next: key.NewBinding(
-				key.WithKeys("tab", "right"),
+				key.WithKeys("tab"),
 				key.WithHelp("tab", "next"),
 			),
 			prev: key.NewBinding(
-				key.WithKeys("shift+tab", "left"),
+				key.WithKeys("shift+tab"),
 				key.WithHelp("shift+tab", "prev"),
 			),
 			add: key.NewBinding(
 				key.WithKeys("ctrl+n"),
-				key.WithHelp("ctrl+n", "add editor"),
+				key.WithHelp("ctrl+n", "add an editor"),
 			),
 			remove: key.NewBinding(
-				key.WithKeys("ctrl+x"),
-				key.WithHelp("ctrl+x", "remove editor"),
+				key.WithKeys("ctrl+w"),
+				key.WithHelp("ctrl+w", "remove an editor"),
 			),
 			quit: key.NewBinding(
 				key.WithKeys("esc", "ctrl+c"),
@@ -59,7 +97,7 @@ func newModel() model {
 	for i := 0; i < initialInputs; i++ {
 		m.inputs[i] = newTextarea()
 	}
-	m.inputs[0].Focus()
+	focusTextarea(&m.inputs[m.focus])
 	m.updateKeybindings()
 	return m
 }
@@ -73,16 +111,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keymap.quit):
+			for i := range m.inputs {
+				m.inputs[i].Blur()
+			}
 			return m, tea.Quit
 		case key.Matches(msg, m.keymap.next):
 			m.inputs[m.focus].Blur()
+			blurTextarea(&m.inputs[m.focus])
 			m.focus++
 			if m.focus > len(m.inputs)-1 {
 				m.focus = 0
 			}
-			m.inputs[m.focus].Focus()
 		case key.Matches(msg, m.keymap.prev):
-			m.inputs[m.focus].Blur()
+			blurTextarea(&m.inputs[m.focus])
 			m.focus--
 			if m.focus < 0 {
 				m.focus = len(m.inputs) - 1
@@ -90,17 +131,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.inputs[m.focus].Focus()
 		case key.Matches(msg, m.keymap.add):
 			m.inputs = append(m.inputs, newTextarea())
-			m.sizeInputs()
 		case key.Matches(msg, m.keymap.remove):
 			m.inputs = m.inputs[:len(m.inputs)-1]
-			m.sizeInputs()
+			if m.focus > len(m.inputs)-1 {
+				m.focus = len(m.inputs) - 1
+			}
 		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
-		m.sizeInputs()
 	}
 
+	focusTextarea(&m.inputs[m.focus])
 	m.updateKeybindings()
+	m.sizeInputs()
 
 	var cmds []tea.Cmd
 	for i := range m.inputs {
@@ -142,13 +185,6 @@ func (m model) View() string {
 	}
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, views...) + "\n\n" + help
-}
-
-func newTextarea() textarea.Model {
-	t := textarea.New()
-	t.SetHeight(20)
-	t.Placeholder = "Type something"
-	return t
 }
 
 func main() {
