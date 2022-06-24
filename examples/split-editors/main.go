@@ -145,11 +145,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.updateKeybindings()
 	m.sizeInputs()
 
+	// Workaround to help unmap ctrl+n/ctrl+p from textarea
+	var keystroke string
+	if msg, ok := msg.(tea.KeyMsg); ok {
+		keystroke = msg.String()
+	}
+
 	var cmds []tea.Cmd
-	for i := range m.inputs {
-		newModel, cmd := m.inputs[i].Update(msg)
-		m.inputs[i] = newModel
-		cmds = append(cmds, cmd)
+
+	if keystroke != "ctrl+n" && keystroke != "ctrl+p" {
+		for i := range m.inputs {
+			newModel, cmd := m.inputs[i].Update(msg)
+			m.inputs[i] = newModel
+			cmds = append(cmds, cmd)
+		}
 	}
 
 	return m, tea.Batch(cmds...)
