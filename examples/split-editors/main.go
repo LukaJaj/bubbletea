@@ -40,23 +40,13 @@ func newTextarea() textarea.Model {
 	t.Placeholder = "Type something"
 	t.ShowLineNumbers = true
 	t.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("212"))
-	t.CursorLineStyle = lipgloss.NewStyle().
-		Background(lipgloss.Color("177")).
-		Foreground(lipgloss.Color("160"))
-	blurTextarea(&t)
+	t.FocusedStyle.Placeholder = focusedPlaceholderStyle
+	t.BlurredStyle.Placeholder = placeholderStyle
+	t.FocusedStyle.CursorLine = cursorLineStyle
+	t.KeyMap.DeleteWordBackward.SetEnabled(false)
+	t.KeyMap.LineNext = key.NewBinding(key.WithKeys("down"))
+	t.Blur()
 	return t
-}
-
-func focusTextarea(m *textarea.Model) {
-	m.CursorLineStyle = cursorLineStyle
-	m.PlaceholderStyle = focusedPlaceholderStyle
-	m.Focus()
-}
-
-func blurTextarea(m *textarea.Model) {
-	m.CursorLineStyle = lipgloss.NewStyle()
-	m.PlaceholderStyle = placeholderStyle
-	m.Blur()
 }
 
 type model struct {
@@ -97,7 +87,7 @@ func newModel() model {
 	for i := 0; i < initialInputs; i++ {
 		m.inputs[i] = newTextarea()
 	}
-	focusTextarea(&m.inputs[m.focus])
+	m.inputs[m.focus].Focus()
 	m.updateKeybindings()
 	return m
 }
@@ -117,13 +107,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case key.Matches(msg, m.keymap.next):
 			m.inputs[m.focus].Blur()
-			blurTextarea(&m.inputs[m.focus])
 			m.focus++
 			if m.focus > len(m.inputs)-1 {
 				m.focus = 0
 			}
 		case key.Matches(msg, m.keymap.prev):
-			blurTextarea(&m.inputs[m.focus])
+			m.inputs[m.focus].Blur()
 			m.focus--
 			if m.focus < 0 {
 				m.focus = len(m.inputs) - 1
@@ -141,7 +130,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 	}
 
-	focusTextarea(&m.inputs[m.focus])
+	m.inputs[m.focus].Focus()
 	m.updateKeybindings()
 	m.sizeInputs()
 
