@@ -167,10 +167,6 @@ func (m *model) updateKeybindings() {
 }
 
 func (m model) View() string {
-	if m.width == 0 {
-		return "Hang on..."
-	}
-
 	help := m.help.ShortHelpView([]key.Binding{
 		m.keymap.next,
 		m.keymap.prev,
