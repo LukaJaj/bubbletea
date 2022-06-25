@@ -45,6 +45,7 @@ func newTextarea() textarea.Model {
 	t.FocusedStyle.CursorLine = cursorLineStyle
 	t.KeyMap.DeleteWordBackward.SetEnabled(false)
 	t.KeyMap.LineNext = key.NewBinding(key.WithKeys("down"))
+	t.KeyMap.LinePrevious = key.NewBinding(key.WithKeys("up"))
 	t.Blur()
 	return t
 }
@@ -138,18 +139,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.updateKeybindings()
 	m.sizeInputs()
 
-	// Workaround to help unmap ctrl+n/ctrl+p from textarea
-	var keystroke string
-	if msg, ok := msg.(tea.KeyMsg); ok {
-		keystroke = msg.String()
-	}
-
-	if keystroke != "ctrl+n" && keystroke != "ctrl+p" {
-		for i := range m.inputs {
-			newModel, cmd := m.inputs[i].Update(msg)
-			m.inputs[i] = newModel
-			cmds = append(cmds, cmd)
-		}
+	// Update all textareas
+	for i := range m.inputs {
+		newModel, cmd := m.inputs[i].Update(msg)
+		m.inputs[i] = newModel
+		cmds = append(cmds, cmd)
 	}
 
 	return m, tea.Batch(cmds...)
