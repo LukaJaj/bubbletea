@@ -43,12 +43,20 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc:
+		case tea.KeyEsc:
+			if m.textarea.Focused() {
+				m.textarea.Blur()
+			} else {
+				cmd = m.textarea.Focus()
+				cmds = append(cmds, cmd)
+			}
+		case tea.KeyCtrlC:
 			return m, tea.Quit
 		}
 
@@ -59,7 +67,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	m.textarea, cmd = m.textarea.Update(msg)
-	return m, cmd
+	cmds = append(cmds, cmd)
+	return m, tea.Batch(cmds...)
 }
 
 func (m model) View() string {

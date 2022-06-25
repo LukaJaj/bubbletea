@@ -97,6 +97,8 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -111,13 +113,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.focus > len(m.inputs)-1 {
 				m.focus = 0
 			}
+			cmd := m.inputs[m.focus].Focus()
+			cmds = append(cmds, cmd)
 		case key.Matches(msg, m.keymap.prev):
 			m.inputs[m.focus].Blur()
 			m.focus--
 			if m.focus < 0 {
 				m.focus = len(m.inputs) - 1
 			}
-			m.inputs[m.focus].Focus()
+			cmd := m.inputs[m.focus].Focus()
+			cmds = append(cmds, cmd)
 		case key.Matches(msg, m.keymap.add):
 			m.inputs = append(m.inputs, newTextarea())
 		case key.Matches(msg, m.keymap.remove):
@@ -130,7 +135,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 	}
 
-	m.inputs[m.focus].Focus()
 	m.updateKeybindings()
 	m.sizeInputs()
 
@@ -139,8 +143,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		keystroke = msg.String()
 	}
-
-	var cmds []tea.Cmd
 
 	if keystroke != "ctrl+n" && keystroke != "ctrl+p" {
 		for i := range m.inputs {
